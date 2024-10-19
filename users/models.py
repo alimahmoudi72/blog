@@ -106,12 +106,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         """
         return self.first_name
 
-    def email_user(self, subject, message, from_email=None, **kwargs):
-        """
-        Sends an email to this User.
-        """
-        send_mail(subject, message, from_email, [self.email], **kwargs)
-
     def save(self, *args, **kwargs):
         if self.email is not None and self.email.strip() == '':
             self.email = None
