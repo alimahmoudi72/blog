@@ -7,9 +7,13 @@ class RatingSerializer(serializers.ModelSerializer):
         model = Rating
         fields = ['score']
 
+    def validate_score(self, score):
+        if not (0 <= score <= 5):
+            raise serializers.ValidationError("score must be an int value between 0 and 5")
+        return score
+
 
 class ArticleSerializer(serializers.ModelSerializer):
-
     user_rating = serializers.SerializerMethodField()
 
     class Meta:

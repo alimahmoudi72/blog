@@ -46,22 +46,21 @@ class SubmitRatingView(generics.CreateAPIView):
         Submit or update rating and invalidate cache.
         """
 
-        score = self.request.data.get('score')
-        if not (0 <= int(score) <= 5):
-            return Response({'detail': 'score must be an int value between 0 and 5'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
         article_id = kwargs.get('article_id')
         article = generics.get_object_or_404(Article, id=article_id)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        score = serializer.validated_data['score']
 
         # Check if the user has already rated this article
         Rating.objects.update_or_create(
             user=request.user,
             article=article,
-            defaults={'score': request.data['score']}
+            defaults={'score': score}
         )
 
         # After updating the rating, invalidate the article list cache
         cache.delete('article_list')
 
-        return Response({'article_id': article_id, 'score': score}, status=status.HTTP_200_OK)
+        return Response(serializer.data)
