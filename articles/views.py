@@ -10,20 +10,19 @@ from .serializers import ArticleSerializer, RatingSerializer
 CACHE_TIMEOUT = 60 * 2  # Cache timeout in seconds (e.g., 2 minutes)
 
 
-# Article List View
 class ArticleListView(generics.ListAPIView):
     queryset = Article.objects.all()
     serializer_class = ArticleSerializer
 
-    def list(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         """
-        Overriding the default list method to implement manual caching with a custom key.
+        Implement get method and manual caching with a custom key.
         """
         cache_key = 'article_list'  # Assign a custom cache key for the article list
         cached_data = cache.get(cache_key)  # Try to retrieve cached data
 
         if cached_data:
-            return Response(cached_data)  # Return cached data if it exists
+            return Response(cached_data)
 
         # If no cached data exists, query the database and cache the response
         response = super().list(request, *args, **kwargs)
@@ -37,13 +36,21 @@ class ArticleListView(generics.ListAPIView):
         return {'request': self.request}
 
 
-# Submit or Update Rating View
 class SubmitRatingView(generics.CreateAPIView):
-    # queryset = Rating.objects.all()
+    queryset = Rating.objects.all()
     serializer_class = RatingSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        """
+        Submit or update rating and invalidate cache.
+        """
+
+        score = self.request.data.get('score')
+        if not (0 <= int(score) <= 5):
+            return Response({'detail': 'score must be an int value between 0 and 5'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         article_id = kwargs.get('article_id')
         article = generics.get_object_or_404(Article, id=article_id)
 
@@ -57,4 +64,4 @@ class SubmitRatingView(generics.CreateAPIView):
         # After updating the rating, invalidate the article list cache
         cache.delete('article_list')
 
-        return Response({'article_id': article_id, 'score': request.data['score']}, status=status.HTTP_200_OK)
+        return Response({'article_id': article_id, 'score': score}, status=status.HTTP_200_OK)
